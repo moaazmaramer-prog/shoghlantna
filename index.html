@@ -26,6 +26,13 @@
             margin-bottom: 15px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             border-right: 5px solid #2c3e50;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .job-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
         }
         
         .job-title {
@@ -35,13 +42,6 @@
             margin-bottom: 8px;
         }
         
-        .job-title a {
-            color: #2c3e50;
-            text-decoration: none;
-        }
-        
-        .job-title a:hover { color: #e74c3c; }
-        
         .job-meta {
             display: flex;
             gap: 15px;
@@ -50,8 +50,6 @@
             margin-top: 10px;
             flex-wrap: wrap;
         }
-        
-        .job-meta span { display: flex; align-items: center; gap: 5px; }
         
         .job-type {
             display: inline-block;
@@ -76,6 +74,101 @@
             font-size: 0.85em;
             margin-bottom: 20px;
         }
+
+        /* Popup */
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .overlay.active { display: flex; }
+        
+        .popup {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 550px;
+            width: 90%;
+            position: relative;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: popIn 0.3s ease;
+        }
+        
+        @keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
+        .popup-close {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: #eee;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-size: 1.1em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .popup-close:hover { background: #ddd; }
+        
+        .popup h2 {
+            font-size: 1.3em;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-left: 40px;
+        }
+        
+        .popup-info {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .popup-info div {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #555;
+            font-size: 0.95em;
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        
+        .popup-excerpt {
+            color: #666;
+            line-height: 1.7;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+        }
+        
+        .popup-btn {
+            display: block;
+            background: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 1em;
+            transition: background 0.2s;
+        }
+        
+        .popup-btn:hover { background: #e74c3c; }
     </style>
 </head>
 <body>
@@ -92,7 +185,70 @@
     </div>
 </div>
 
+<!-- Popup -->
+<div class="overlay" id="overlay" onclick="closePopup(event)">
+    <div class="popup" id="popup">
+        <button class="popup-close" onclick="closePopupBtn()">✕</button>
+        <h2 id="popup-title"></h2>
+        <div class="popup-info">
+            <div id="popup-type" style="display:none">🏷️ <span></span></div>
+            <div id="popup-location" style="display:none">📍 <span></span></div>
+            <div id="popup-date" style="display:none">📅 <span></span></div>
+        </div>
+        <p class="popup-excerpt" id="popup-excerpt"></p>
+        <a href="#" id="popup-link" class="popup-btn" target="_blank">
+            التقدم للوظيفة ↗
+        </a>
+    </div>
+</div>
+
 <script>
+function openPopup(job) {
+    document.getElementById('popup-title').textContent = job.title;
+    
+    const typeEl = document.getElementById('popup-type');
+    if (job.type) {
+        typeEl.style.display = 'flex';
+        typeEl.querySelector('span').textContent = job.type;
+    } else {
+        typeEl.style.display = 'none';
+    }
+    
+    const locEl = document.getElementById('popup-location');
+    if (job.location) {
+        locEl.style.display = 'flex';
+        locEl.querySelector('span').textContent = job.location;
+    } else {
+        locEl.style.display = 'none';
+    }
+    
+    const dateEl = document.getElementById('popup-date');
+    if (job.date) {
+        dateEl.style.display = 'flex';
+        dateEl.querySelector('span').textContent = job.date;
+    } else {
+        dateEl.style.display = 'none';
+    }
+    
+    const excerpt = document.getElementById('popup-excerpt');
+    excerpt.textContent = job.excerpt || 'لا يوجد وصف متاح';
+    
+    document.getElementById('popup-link').href = job.link;
+    document.getElementById('overlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closePopupBtn() {
+    document.getElementById('overlay').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+function closePopup(e) {
+    if (e.target === document.getElementById('overlay')) {
+        closePopupBtn();
+    }
+}
+
 fetch('jobs.json')
     .then(res => res.json())
     .then(jobs => {
@@ -106,13 +262,11 @@ fetch('jobs.json')
         
         timeDiv.textContent = `إجمالي الوظائف: ${jobs.length} وظيفة`;
         
-        container.innerHTML = jobs.map(job => `
-            <div class="job-card">
+        container.innerHTML = jobs.map((job, i) => `
+            <div class="job-card" onclick="openPopup(${JSON.stringify(job).replace(/"/g, '&quot;')})">
                 ${job.type ? `<span class="job-type">${job.type}</span>` : ''}
-                <div class="job-title">
-                    <a href="${job.link}" target="_blank">${job.title}</a>
-                </div>
-                ${job.excerpt ? `<p style="color:#555; font-size:0.9em">${job.excerpt}</p>` : ''}
+                <div class="job-title">${job.title}</div>
+                ${job.excerpt ? `<p style="color:#555;font-size:0.9em;margin-top:5px">${job.excerpt}</p>` : ''}
                 <div class="job-meta">
                     ${job.location ? `<span>📍 ${job.location}</span>` : ''}
                     ${job.date ? `<span>📅 ${job.date}</span>` : ''}
